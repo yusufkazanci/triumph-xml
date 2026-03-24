@@ -2,7 +2,7 @@ name: Download XML Daily
 
 on:
   schedule:
-    - cron: "0 0 * * *"   # Every day at 00:00 UTC
+    - cron: "0 0 * * *"
   workflow_dispatch:
 
 permissions:
@@ -11,22 +11,29 @@ permissions:
 jobs:
   fetch-upload:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Download XML files
         run: |
-          curl -fL -o unitinventory_univ.xml "https://showroom.triumphcleveland.com/unitinventory_univ.xml"
-          curl -fL -o second.xml "state8.com/unitinventory_univ.xml"
-          curl -fL -o third.xml  "https://showroom.polarismedina.com/unitinventory_univ.xml"
+          set -euo pipefail
+
+          curl -fL --retry 3 --retry-delay 5 -o data.xml "https://showroom.triumphcleveland.com/unitinventory_univ.xml"
+          curl -fL --retry 3 --retry-delay 5 -o second.xml "https://state8.com/unitinventory_univ.xml"
+          curl -fL --retry 3 --retry-delay 5 -o third.xml "https://showroom.polarismedina.com/unitinventory_univ.xml"
 
       - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add unitinventory_univ.xml second.xml third.xml
+          git add data.xml second.xml third.xml
 
-          # Only commit/push if there are changes
-          git diff --cached --quiet && echo "No changes" || (git commit -m "Update XML files" && git push)
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Update XML files"
+            git push
+          fi
